@@ -1,7 +1,17 @@
 [
   {
     "username": "admin",
-    "password": "admin123",
+    "password": "240be518fabd2724ddb6f04eeb1da596",
     "role": "admin"
+  },
+  {
+    "username": "anggota1",
+    "password": "25d55ad283aa400af464c76d713c07ad",
+    "role": "anggota"
+  },
+  {
+    "username": "anggota2",
+    "password": "121121",
+    "role": "anggota"
   }
 ]

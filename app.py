@@ -1,114 +1,137 @@
 import streamlit as st
-import json
 from datetime import date
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 st.set_page_config(page_title="Latihan Paskibra", layout="wide")
 
-# ================= UTIL =================
-def load(file):
-    try:
-        with open(file, "r") as f:
-            return json.load(f)
-    except:
-        return []
+# ================= GOOGLE SHEET =================
+def connect_sheet():
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(
+        st.secrets["gcp_service_account"],
+        scope
+    )
+    client = gspread.authorize(creds)
+    return client.open("DB_Latihan_Paskibra")
 
-def save(file, data):
-    with open(file, "w") as f:
-        json.dump(data, f, indent=4)
+def get_users():
+    sheet = connect_sheet()
+    ws = sheet.worksheet("users")
+    return ws.get_all_records()
 
-users = load("users.json")
-anggota = load("anggota.json")
-latihan = load("latihan.json")
-absensi = load("absensi.json")
+def get_ws_data(sheet_name):
+    sheet = connect_sheet()
+    ws = sheet.worksheet(sheet_name)
+    return ws, ws.get_all_records()
+
+def update_ws_data(sheet_name, row_values):
+    ws = connect_sheet().worksheet(sheet_name)
+    ws.append_row(row_values)
 
 # ================= LOGIN =================
 if "login" not in st.session_state:
     st.session_state.login = False
+if "user" not in st.session_state:
+    st.session_state.user = None
 
 if not st.session_state.login:
-    st.title("🔐 Login Pelatih")
-
-    u = st.text_input("Username")
-    p = st.text_input("Password", type="password")
+    st.title("Login Aplikasi Latihan Paskibra")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
     if st.button("Login"):
+        users = get_users()
+        login_success = False
         for user in users:
-            if user["username"] == u and user["password"] == p:
+            if str(user["username"]).strip() == username.strip() and str(user["password"]).strip() == password.strip():
                 st.session_state.login = True
                 st.session_state.user = user
-                st.rerun()
-        st.error("Username atau password salah")
-
+                st.success(f"Login berhasil! Halo {username}")
+                login_success = True
+                st.experimental_rerun()
+        if not login_success:
+            st.error("Username atau password salah")
     st.stop()
 
-# ================= SIDEBAR =================
-st.sidebar.title("📘 Menu")
-menu = st.sidebar.radio(
-    "Pilih Menu",
-    ["Beranda", "Program Latihan", "Data Anggota", "Absensi", "Rekap"]
-)
+# ================= ROLE & MENU =================
+role = st.session_state.user["role"].strip().lower()
+
+if role == "admin":
+    menu = st.sidebar.radio(
+        "Menu Admin",
+        ["Beranda", "Data Anggota", "Program Latihan", "Absensi", "Rekap", "Logout"]
+    )
+elif role == "anggota":
+    menu = st.sidebar.radio(
+        "Menu Anggota",
+        ["Beranda", "Absensi", "Rekap", "Logout"]
+    )
 
 if st.sidebar.button("Logout"):
     st.session_state.login = False
-    st.rerun()
+    st.session_state.user = None
+    st.experimental_rerun()
 
 # ================= BERANDA =================
 if menu == "Beranda":
     st.title("🏠 Sistem Latihan Paskibra")
+    ws, data = get_ws_data("anggota")
+    st.write("Data anggota dari Google Sheet:")
+    st.write(data)
     st.info("Aplikasi manajemen latihan Paskibra berbasis web")
 
 # ================= PROGRAM LATIHAN =================
 elif menu == "Program Latihan":
+    if role != "admin":
+        st.error("❌ Anda tidak memiliki akses ke menu ini")
+        st.stop()
     st.title("📋 Program Latihan")
-
+    ws_latihan, latihan = get_ws_data("latihan")
     with st.form("latihan"):
         nama = st.text_input("Nama Latihan")
         materi = st.text_area("Materi")
         tgl = st.date_input("Tanggal", value=date.today())
         simpan = st.form_submit_button("Simpan")
-
         if simpan:
-            latihan.append({
-                "id": len(latihan)+1,
-                "nama": nama,
-                "materi": materi,
-                "tanggal": str(tgl)
-            })
-            save("latihan.json", latihan)
+            update_ws_data("latihan", [len(latihan)+1, nama, materi, str(tgl)])
             st.success("Latihan ditambahkan")
 
     st.divider()
-
+    ws_latihan, latihan = get_ws_data("latihan")
     for l in latihan:
-        with st.expander(f"{l['nama']} ({l['tanggal']})"):
+        with st.expander(f"{l['nama latihan']} ({l['tanggal']})"):
             st.write(l["materi"])
 
 # ================= DATA ANGGOTA =================
 elif menu == "Data Anggota":
+    if role != "admin":
+        st.error("❌ Anda tidak memiliki akses ke menu ini")
+        st.stop()
     st.title("👥 Data Anggota")
-
+    ws_anggota, anggota = get_ws_data("anggota")
     with st.form("anggota"):
         nama = st.text_input("Nama")
         kelas = st.text_input("Kelas")
         jabatan = st.selectbox("Jabatan", ["Pasukan", "Danton", "Pengurus"])
         simpan = st.form_submit_button("Tambah")
-
         if simpan:
-            anggota.append({
-                "id": len(anggota)+1,
-                "nama": nama,
-                "kelas": kelas,
-                "jabatan": jabatan
-            })
-            save("anggota.json", anggota)
+            update_ws_data("anggota", [len(anggota)+1, nama, kelas, jabatan])
             st.success("Anggota ditambahkan")
 
     st.divider()
+    ws_anggota, anggota = get_ws_data("anggota")
     st.table(anggota)
 
 # ================= ABSENSI =================
 elif menu == "Absensi":
     st.title("✅ Absensi Latihan")
+    ws_latihan, latihan = get_ws_data("latihan")
+    ws_anggota, anggota = get_ws_data("anggota")
+    ws_absensi, absensi = get_ws_data("absensi")
 
     if not latihan:
         st.warning("Belum ada latihan")
@@ -116,23 +139,23 @@ elif menu == "Absensi":
         pilih = st.selectbox(
             "Pilih Latihan",
             latihan,
-            format_func=lambda x: f"{x['nama']} ({x['tanggal']})"
+            format_func=lambda x: f"{x['nama latihan']} ({x['tanggal']})"
         )
-
         for a in anggota:
             hadir = st.checkbox(a["nama"], key=a["id"])
             if hadir:
-                absensi.append({
-                    "latihan": pilih["id"],
-                    "anggota": a["nama"],
-                    "status": "Hadir"
-                })
-
+                ws_absensi.append_row([len(absensi)+1, pilih["id"], a["nama"], "Hadir"])
         if st.button("Simpan Absensi"):
-            save("absensi.json", absensi)
             st.success("Absensi tersimpan")
 
 # ================= REKAP =================
 elif menu == "Rekap":
     st.title("📊 Rekap Kehadiran")
+    ws_absensi, absensi = get_ws_data("absensi")
     st.table(absensi)
+
+# ================= LOGOUT =================
+elif menu == "Logout":
+    st.session_state.login = False
+    st.session_state.user = None
+    st.experimental_rerun()
