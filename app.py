@@ -204,7 +204,7 @@ elif menu == "✅ Absensi":
 # ======================================================
 # 📊 REKAP (TAHAP 6)
 # ======================================================
-elif menu == "Rekap":
+elif menu == "📊 Rekap":
     st.title("📊 Rekap Kehadiran")
 
     latihan = get_data("latihan")
@@ -217,27 +217,21 @@ elif menu == "Rekap":
         df_absensi = pd.DataFrame(absensi)
 
         # mapping id_latihan -> tanggal & materi
-        latihan_map = df_latihan.set_index("id")[["tanggal", "materi"]]
+        latihan_map = {
+    str(l["id"]): l["tanggal"]
+    for l in latihan
+}
 
-        # tambahkan kolom tanggal & materi ke absensi
-        df_absensi["Tanggal"] = df_absensi["latihan_id"].map(
-            latihan_map["tanggal"]
-        )
-        df_absensi["Materi"] = df_absensi["latihan_id"].map(
-            latihan_map["materi"]
-        )
+rekap = []
 
-        # rapikan kolom
-        df_absensi = df_absensi[
-            ["Tanggal", "Materi", "anggota", "status"]
-        ]
+for a in absensi:
+    latihan_id = str(a["latihan_id"])
+    rekap.append({
+        "Tanggal": latihan_map.get(latihan_id, "-"),
+        "Anggota": a["anggota"],
+        "Status": a["status"]
+    })
 
-        df_absensi.columns = [
-            "Tanggal",
-            "Materi Latihan",
-            "Nama Anggota",
-            "Status"
-        ]
+st.table(rekap)
 
-        st.dataframe(df_absensi, use_container_width=True)
 
