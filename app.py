@@ -203,6 +203,21 @@ elif menu == "✅ Absensi":
 # ======================================================
 # 📊 REKAP (TAHAP 6)
 # ======================================================
-elif menu == "📊 Rekap":
+elif menu == "Rekap":
     st.title("📊 Rekap Kehadiran")
-    st.table(get_data("absensi"))
+
+    absensi = get_data("absensi")
+
+    if not absensi:
+        st.info("Belum ada data absensi")
+    else:
+        df = pd.DataFrame(absensi)
+
+        # pastikan urutan kolom rapi
+        df = df[["tanggal", "latihan_id", "anggota", "status"]]
+
+        # ganti nama kolom agar enak dibaca
+        df.columns = ["Tanggal", "ID Latihan", "Nama Anggota", "Status"]
+
+        st.dataframe(df, use_container_width=True)
+
