@@ -19,8 +19,26 @@ def connect_sheet():
     client = gspread.authorize(creds)
     return client.open("DB_Latihan_Paskibra")
 
+st.write("TES KONEKSI SHEET")
+
+try:
+    sheet = connect_sheet()
+    st.success("✔ Berhasil connect ke Google Sheet")
+
+    ws = sheet.worksheet("users")
+    data = ws.get_all_records()
+
+    st.write("ISI USERS:", data)
+except Exception as e:
+    st.error("❌ Gagal ambil sheet users")
+    st.exception(e)
+
+st.stop()
+
+
 def get_data(sheet_name):
-    return connect_sheet().worksheet(sheet_name).get_all_records()
+    sheet = connect_sheet()
+    return sheet.worksheet(sheet_name).get_all_records()
 
 def save_data(sheet_name, data):
     ws = connect_sheet().worksheet(sheet_name)
@@ -29,34 +47,42 @@ def save_data(sheet_name, data):
     for row in data:
         ws.append_row(list(row.values()))
 
-# ======================================================
-# SESSION
-# ======================================================
+st.write("DEBUG USERS:", users)
+# ================= LOGIN =================
 if "login" not in st.session_state:
     st.session_state.login = False
-if "user" not in st.session_state:
     st.session_state.user = None
 
-# ======================================================
-# LOGIN (TAHAP 2)
-# ======================================================
 if not st.session_state.login:
-    st.title("🔐 Login Sistem Latihan Paskibra")
+    st.title("Login Aplikasi Latihan Paskibra")
 
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
 
     if st.button("Login"):
         users = get_data("users")
-        for u in users:
-            if u["username"] == username and u["password"] == password:
+
+        login_ok = False
+        for user in users:
+            u = str(user.get("username", "")).strip()
+            p = str(user.get("password", "")).strip()
+            r = str(user.get("role", "")).strip().lower()
+
+            if u == username.strip() and p == password.strip():
                 st.session_state.login = True
-                st.session_state.user = u
+                st.session_state.user = {
+                    "username": u,
+                    "role": r
+                }
+                login_ok = True
                 st.success("Login berhasil")
-                
-        st.error("Username atau password salah")
+                st.rerun()
+
+        if not login_ok:
+            st.error("Username atau password salah")
 
     st.stop()
+
 
 # ======================================================
 # SIDEBAR & MENU (TAHAP 1)
