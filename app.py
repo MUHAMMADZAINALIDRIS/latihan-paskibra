@@ -19,22 +19,6 @@ def connect_sheet():
     client = gspread.authorize(creds)
     return client.open("DB_Latihan_Paskibra")
 
-st.write("TES KONEKSI SHEET")
-
-try:
-    sheet = connect_sheet()
-    st.success("✔ Berhasil connect ke Google Sheet")
-
-    ws = sheet.worksheet("users")
-    data = ws.get_all_records()
-
-    st.write("ISI USERS:", data)
-except Exception as e:
-    st.error("❌ Gagal ambil sheet users")
-    st.exception(e)
-
-st.stop()
-
 
 def get_data(sheet_name):
     sheet = connect_sheet()
@@ -47,7 +31,6 @@ def save_data(sheet_name, data):
     for row in data:
         ws.append_row(list(row.values()))
 
-st.write("DEBUG USERS:", users)
 # ================= LOGIN =================
 if "login" not in st.session_state:
     st.session_state.login = False
@@ -62,7 +45,6 @@ if not st.session_state.login:
     if st.button("Login"):
         users = get_data("users")
 
-        login_ok = False
         for user in users:
             u = str(user.get("username", "")).strip()
             p = str(user.get("password", "")).strip()
@@ -74,11 +56,10 @@ if not st.session_state.login:
                     "username": u,
                     "role": r
                 }
-                login_ok = True
                 st.success("Login berhasil")
                 st.rerun()
-
-        if not login_ok:
+                break
+        else:
             st.error("Username atau password salah")
 
     st.stop()
