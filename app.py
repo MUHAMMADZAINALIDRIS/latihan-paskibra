@@ -2,6 +2,7 @@ import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import date
+import pandas as pd
 
 st.set_page_config("Sistem Latihan Paskibra", layout="wide")
 
@@ -206,18 +207,37 @@ elif menu == "✅ Absensi":
 elif menu == "Rekap":
     st.title("📊 Rekap Kehadiran")
 
+    latihan = get_data("latihan")
     absensi = get_data("absensi")
 
-    if not absensi:
-        st.info("Belum ada data absensi")
+    if not latihan or not absensi:
+        st.info("Data latihan atau absensi belum lengkap")
     else:
-        df = pd.DataFrame(absensi)
+        df_latihan = pd.DataFrame(latihan)
+        df_absensi = pd.DataFrame(absensi)
 
-        # pastikan urutan kolom rapi
-        df = df[["tanggal", "latihan_id", "anggota", "status"]]
+        # mapping id_latihan -> tanggal & materi
+        latihan_map = df_latihan.set_index("id")[["tanggal", "materi"]]
 
-        # ganti nama kolom agar enak dibaca
-        df.columns = ["Tanggal", "ID Latihan", "Nama Anggota", "Status"]
+        # tambahkan kolom tanggal & materi ke absensi
+        df_absensi["Tanggal"] = df_absensi["latihan_id"].map(
+            latihan_map["tanggal"]
+        )
+        df_absensi["Materi"] = df_absensi["latihan_id"].map(
+            latihan_map["materi"]
+        )
 
-        st.dataframe(df, use_container_width=True)
+        # rapikan kolom
+        df_absensi = df_absensi[
+            ["Tanggal", "Materi", "anggota", "status"]
+        ]
+
+        df_absensi.columns = [
+            "Tanggal",
+            "Materi Latihan",
+            "Nama Anggota",
+            "Status"
+        ]
+
+        st.dataframe(df_absensi, use_container_width=True)
 
