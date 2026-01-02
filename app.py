@@ -179,13 +179,13 @@ elif menu == "Absensi":
 
     ws_absensi = get_ws("absensi")
 
-    tanggal = st.date_input("Tanggal Latihan")
+    tanggal = st.date_input("tanggal")
 
-    anggota_list = get_data("anggota")
+    nama_list = get_data("nama")
 
     status_map = {}
 
-    for a in anggota_list:
+    for a in nama_list:
         status_map[a["nama"]] = st.selectbox(
             a["nama"],
             ["Hadir", "Izin", "Alfa"],
@@ -217,9 +217,9 @@ elif menu == "Rekap":
     else:
         rekap = [
             {
-                "Tanggal": a["tanggal"],
-                "Nama": a["nama"],
-                "Status": a["status"]
+                "tanggal": a["tanggal"],
+                "nama": a["nama"],
+                "status": a["status"]
             }
             for a in absensi
         ]
