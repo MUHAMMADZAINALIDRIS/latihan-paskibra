@@ -20,6 +20,9 @@ def connect_sheet():
     client = gspread.authorize(creds)
     return client.open("DB_Latihan_Paskibra")
 
+def get_ws(sheet_name):
+    sheet = connect_sheet()
+    return sheet.worksheet(sheet_name)
 
 def get_data(sheet_name):
     sheet = connect_sheet()
@@ -171,67 +174,57 @@ elif menu == "👥 Data Anggota":
 # ======================================================
 # ✅ ABSENSI (TAHAP 5)
 # ======================================================
-elif menu == "✅ Absensi":
+elif menu == "Absensi":
     st.title("✅ Absensi Latihan")
 
-    latihan = get_data("latihan")
-    anggota = get_data("anggota")
-    absensi = get_data("absensi")
+    ws_absensi = get_ws("absensi")
 
-    if not latihan:
-        st.warning("Belum ada latihan")
-        st.stop()
+    tanggal = st.date_input("Tanggal Latihan")
 
-    pilih = st.selectbox("Pilih Latihan", latihan, format_func=lambda x: f"{x['tanggal']} - {x['materi']}")
+    anggota_list = get_data("anggota")
 
-    for a in anggota:
-        status = st.radio(
+    status_map = {}
+
+    for a in anggota_list:
+        status_map[a["nama"]] = st.selectbox(
             a["nama"],
             ["Hadir", "Izin", "Alfa"],
-            horizontal=True,
-            key=a["id"]
+            key=a["nama"]
         )
-        absensi.append({
-            "latihan_id": pilih["id"],
-            "nama": a["nama"],
-            "status": status
-        })
 
     if st.button("Simpan Absensi"):
-        save_data("absensi", absensi)
-        st.success("Absensi tersimpan")
+        for nama, status in status_map.items():
+            ws_absensi.append_row([
+                str(tanggal),  # tanggal
+                nama,          # nama
+                status         # status
+            ])
+
+        st.success("Absensi berhasil disimpan")
+        # st.rerun()
+
 
 # ======================================================
 # 📊 REKAP (TAHAP 6)
 # ======================================================
-elif menu == "📊 Rekap":
+elif menu == "Rekap":
     st.title("📊 Rekap Kehadiran")
 
-    latihan = get_data("latihan")
     absensi = get_data("absensi")
 
-    if not latihan or not absensi:
-        st.info("Data latihan atau absensi belum lengkap")
+    if not absensi:
+        st.info("Belum ada data absensi")
     else:
-        df_latihan = pd.DataFrame(latihan)
-        df_absensi = pd.DataFrame(absensi)
+        rekap = [
+            {
+                "Tanggal": a["tanggal"],
+                "Nama": a["nama"],
+                "Status": a["status"]
+            }
+            for a in absensi
+        ]
 
-        # mapping id_latihan -> tanggal & materi
-        latihan_map = {
-    str(l["id"]): l["tanggal"]
-    for l in latihan
-}
+        st.dataframe(rekap, use_container_width=True)
 
-rekap = []
-
-for a in absensi:
-    latihan_id = str(a["latihan_id"])
-    rekap.append({
-        "Tanggal": latihan_map.get(latihan_id, "-"),
-        "Anggota": a["anggota"],
-        "Status": a["status"]
-    })
-
-st.table(rekap)
 
 
